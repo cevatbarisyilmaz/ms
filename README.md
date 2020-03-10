@@ -7,7 +7,7 @@
 
 Simple mail service to send mails to remote SMTP servers.
 
-## How to Properly Send Emails with Go for Beginners
+## How to Properly Send Emails for Beginners
 
 To be successfully delivered, an email need to pass 3 spam checks:
 
