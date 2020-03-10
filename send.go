@@ -6,8 +6,8 @@ import (
 	"context"
 	"crypto"
 	"errors"
+	"github.com/cevatbarisyilmaz/ms/smtp"
 	"github.com/emersion/go-msgauth/dkim"
-	"github.com/emersion/go-smtp"
 	"math/rand"
 	"net"
 	"net/mail"
@@ -17,9 +17,7 @@ import (
 	"time"
 )
 
-const mxLookUpTimeout = time.Second * 8
-
-var smtpPorts = []string{":587", ":25"}
+const timeout = time.Second * 8
 
 // Service is used to send mails
 type Service struct {
@@ -88,20 +86,18 @@ func (s *Service) Send(m *Mail) error {
 		if err != nil {
 			return err
 		}
-		ctx, _ := context.WithTimeout(context.Background(), mxLookUpTimeout)
+		ctx, _ := context.WithTimeout(context.Background(), timeout)
 		mxs, err := net.DefaultResolver.LookupMX(ctx, addr)
 		if err != nil || len(mxs) == 0 {
 			mxs = []*net.MX{{Host: addr}}
 		}
 		for _, mx := range mxs {
-			for _, port := range smtpPorts {
-				err = smtp.SendMail(mx.Host+port, nil, from.Address, []string{to.Address}, &buffer)
-				if err == nil {
-					return nil
-				}
-				if firstError == nil {
-					firstError = err
-				}
+			err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{to.Address}, &buffer)
+			if err == nil {
+				return nil
+			}
+			if firstError == nil {
+				firstError = err
 			}
 		}
 	}

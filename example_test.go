@@ -39,7 +39,7 @@ func Example() {
 	mail := &ms.Mail{
 		Headers: map[string][]byte{
 			"from":    []byte("\"Your Domain\" <noreply@yourdomain.com>"),
-			"to":      []byte("someuser@anotherdomain.com"),
+			"to":      []byte("cevatbarisyilmaz@gmail.com"),
 			"subject": []byte("Don't Mind Me, Just Testing Some Mail Library"),
 		},
 		Body: []byte("This mail confirms that you successfully setup ms!"),
