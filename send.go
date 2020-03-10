@@ -1,7 +1,9 @@
+// Package ms provides a simple email service to send emails to remote SMTP servers
 package ms
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"errors"
 	"github.com/emersion/go-msgauth/dkim"
@@ -15,6 +17,10 @@ import (
 	"time"
 )
 
+const mxLookUpTimeout = time.Second * 8
+
+var smtpPorts = []string{":587", ":25"}
+
 type Service struct {
 	domain          string
 	dkimSignOptions *dkim.SignOptions
@@ -23,6 +29,11 @@ type Service struct {
 	rand            *rand.Rand
 }
 
+// New returns a new Service to send emails via
+// domain is the associated domain name with the host
+// dkimSelector is the DKIM selector to use with DKIM signature
+// dkimSigner is the private key belongs to the domain and DKIM selector tuple
+// check out README if you are not sure what DKIM is
 func New(domain string, dkimSelector string, dkimSigner crypto.Signer) *Service {
 	serviceRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &Service{
@@ -39,6 +50,7 @@ func New(domain string, dkimSelector string, dkimSigner crypto.Signer) *Service 
 	}
 }
 
+// Send sends the mail to a remote SMTP server
 func (s *Service) Send(m *Mail) error {
 	s.nextMessageIDMu.Lock()
 	msgID := s.nextMessageID
@@ -69,20 +81,30 @@ func (s *Service) Send(m *Mail) error {
 	if err != nil {
 		return err
 	}
+	var firstError error
 	for _, to := range addrs {
 		addr, err := resolveAddr(to.Address)
 		if err != nil {
 			return err
 		}
-		mxs, err := net.LookupMX(addr)
+		ctx, _ := context.WithTimeout(context.Background(), mxLookUpTimeout)
+		mxs, err := net.DefaultResolver.LookupMX(ctx, addr)
 		if err != nil || len(mxs) == 0 {
 			mxs = []*net.MX{{Host: addr}}
 		}
 		for _, mx := range mxs {
-			return smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{to.Address}, &buffer)
+			for _, port := range smtpPorts {
+				err = smtp.SendMail(mx.Host+port, nil, from.Address, []string{to.Address}, &buffer)
+				if err == nil {
+					return nil
+				}
+				if firstError == nil {
+					firstError = err
+				}
+			}
 		}
 	}
-	return nil
+	return firstError
 }
 
 func resolveAddr(addr string) (string, error) {
