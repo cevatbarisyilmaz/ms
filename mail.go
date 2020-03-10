@@ -4,6 +4,7 @@ import (
 	"bytes"
 )
 
+// Mail holds mail headers and the body to send
 type Mail struct {
 	Headers map[string][]byte
 	Body    []byte

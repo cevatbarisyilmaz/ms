@@ -21,6 +21,7 @@ const mxLookUpTimeout = time.Second * 8
 
 var smtpPorts = []string{":587", ":25"}
 
+// Service is used to send mails
 type Service struct {
 	domain          string
 	dkimSignOptions *dkim.SignOptions

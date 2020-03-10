@@ -12,10 +12,11 @@ import (
 func Example() {
 	const (
 		domain            = "yourdomain.com" // Your Domain
-		dkimSelector      = "default"		 // DKIM Selector To Use
-		privateKeyPemFile = "private.key"	 // Location of DKIM Private Key File
+		dkimSelector      = "default"        // DKIM Selector To Use
+		privateKeyPemFile = "private.key"    // Location of DKIM Private Key File
 	)
 
+	// Get the Private Key for DKIM Signatures
 	var privateKey *rsa.PrivateKey
 	privateKeyData, err := ioutil.ReadFile(privateKeyPemFile)
 	if err != nil {
@@ -31,8 +32,10 @@ func Example() {
 	}
 	log.Println("private key is loaded from the pem file")
 
+	// Create the mail service
 	mailService := ms.New(domain, dkimSelector, privateKey)
 
+	// Create a new mail
 	mail := &ms.Mail{
 		Headers: map[string][]byte{
 			"from":    []byte("\"Your Domain\" <noreply@yourdomain.com>"),
@@ -41,6 +44,8 @@ func Example() {
 		},
 		Body: []byte("This mail confirms that you successfully setup ms!"),
 	}
+
+	// Send the mail via mail service
 	err = mailService.Send(mail)
 	if err != nil {
 		log.Fatal(err)
