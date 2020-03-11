@@ -6,6 +6,8 @@ import (
 
 // Mail holds mail headers and the body to send
 type Mail struct {
+	// From, To, Cc and Bcc headers should start with a capital letter followed by lower cases
+	// Such as "From", "To" etc.
 	Headers map[string][]byte
 	Body    []byte
 }
