@@ -132,9 +132,9 @@ func Example() {
 	// Create a new mail
 	mail := &ms.Mail{
 		Headers: map[string][]byte{
-			"from":    []byte("\"Your Domain\" <noreply@yourdomain.com>"),
-			"to":      []byte("someuser@anotherdomain.com"),
-			"subject": []byte("Don't Mind Me, Just Testing Some Mail Library"),
+			"From":    []byte("\"Your Domain\" <noreply@yourdomain.com>"),
+			"To":      []byte("someuser@anotherdomain.com"),
+			"Subject": []byte("Don't Mind Me, Just Testing Some Mail Library"),
 		},
 		Body: []byte("This mail confirms that you successfully setup ms!"),
 	}
