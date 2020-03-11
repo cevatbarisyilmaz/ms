@@ -50,12 +50,12 @@ func New(domain string, dkimSelector string, dkimSigner crypto.Signer) *Service 
 }
 
 // Send sends the mail to a remote SMTP server
-// Returns (nil, error) if there is something wrong with the contents of the email
-// Returns (report, nil) if contents of the mail were OK
-// report is a recipient to error map which shows individual errors for each delivery
-// A nil entry in the map means delivery for the corresponding recipient was successful
+// Returns (nil, error) if there is a major error that prevented service to send any emails
+// Returns (report, nil) if there was not a major error
+// report is a recipient to error map which shows individual errors for each delivery if exists
 // Recipients are email addresses of To, Cc And Bcc targets without display names such as
 // someuser@somedomain.com
+// a 0 length report and nil error means everything went okay
 func (s *Service) Send(m *Mail) (map[string]error, error) {
 	s.nextMessageIDMu.Lock()
 	msgID := s.nextMessageID
@@ -64,7 +64,7 @@ func (s *Service) Send(m *Mail) (map[string]error, error) {
 	m.Headers["Message-ID"] = []byte("<" + strconv.Itoa(int(time.Now().Unix())) + "." + strconv.Itoa(rand.Int()) + "." + strconv.Itoa(int(msgID)) + "@movieofthenight.com>")
 	from, err := mail.ParseAddress(string(m.Headers["From"]))
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing form header failed")
+		return nil, errors.Wrap(err, "parsing from header failed")
 	}
 	var to []string
 	addrs, err := mail.ParseAddressList(string(m.Headers["To"]))
@@ -79,56 +79,110 @@ func (s *Service) Send(m *Mail) (map[string]error, error) {
 			to = append(to, addr.Address)
 		}
 	}
+	var bcc []*mail.Address
 	addrs, err = mail.ParseAddressList(string(m.Headers["Bcc"]))
 	if err == nil {
 		for _, addr := range addrs {
-			to = append(to, addr.Address)
+			bcc = append(bcc, addr)
 		}
 	}
-	delete(m.Headers, "Bcc")
-	if len(to) == 0 {
+	if len(to) == 0 && len(bcc) == 0 {
 		return nil, errors.New("either To, Cc, or Bcc must be supplied")
 	}
-	signer, err := dkim.NewSigner(s.dkimSignOptions)
-	if err != nil {
-		return nil, err
-	}
-	rawMail := m.encode()
-	_, err = signer.Write(rawMail)
-	if err != nil {
-		return nil, err
-	}
-	err = signer.Close()
-	if err != nil {
-		return nil, err
-	}
-	var buffer bytes.Buffer
-	buffer.WriteString(signer.Signature())
-	buffer.Write(rawMail)
+	delete(m.Headers, "Bcc")
 	report := map[string]error{}
-	for _, recipient := range to {
-		addr, err := resolveAddr(recipient)
+	if len(to) > 0 {
+		signer, err := dkim.NewSigner(s.dkimSignOptions)
 		if err != nil {
-			report[recipient] = err
-			continue
+			return nil, err
 		}
-		ctx, _ := context.WithTimeout(context.Background(), timeout)
-		mxs, err := net.DefaultResolver.LookupMX(ctx, addr)
-		if err != nil || len(mxs) == 0 {
-			mxs = []*net.MX{{Host: addr}}
+		rawMail := m.encode()
+		_, err = signer.Write(rawMail)
+		if err != nil {
+			return nil, err
 		}
-		var firstError error
-		for _, mx := range mxs {
-			err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{recipient}, &buffer, s.domain)
-			if err == nil {
-				firstError = nil
-				break
+		err = signer.Close()
+		if err != nil {
+			return nil, err
+		}
+		var buffer bytes.Buffer
+		buffer.WriteString(signer.Signature())
+		buffer.Write(rawMail)
+		for _, recipient := range to {
+			addr, err := resolveAddr(recipient)
+			if err != nil {
+				report[recipient] = err
+				continue
 			}
-			if firstError == nil {
-				firstError = err
+			ctx, _ := context.WithTimeout(context.Background(), timeout)
+			mxs, err := net.DefaultResolver.LookupMX(ctx, addr)
+			if err != nil || len(mxs) == 0 {
+				mxs = []*net.MX{{Host: addr}}
+			}
+			var firstError error
+			for _, mx := range mxs {
+				err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{recipient}, &buffer, s.domain)
+				if err == nil {
+					firstError = nil
+					break
+				}
+				if firstError == nil {
+					firstError = err
+				}
+			}
+			if firstError != nil {
+				report[recipient] = firstError
 			}
 		}
-		report[recipient] = firstError
+	}
+	if len(bcc) > 0 {
+		for _, recipient := range bcc {
+			signer, err := dkim.NewSigner(s.dkimSignOptions)
+			if err != nil {
+				report[recipient.Address] = err
+				continue
+			}
+			m.Headers["Bcc"] = []byte(recipient.String())
+			rawMail := m.encode()
+			_, err = signer.Write(rawMail)
+			if err != nil {
+				report[recipient.Address] = err
+				continue
+			}
+			err = signer.Close()
+			if err != nil {
+				report[recipient.Address] = err
+				continue
+			}
+			var buffer bytes.Buffer
+			buffer.WriteString(signer.Signature())
+			buffer.Write(rawMail)
+
+			addr, err := resolveAddr(recipient.Address)
+			if err != nil {
+				report[recipient.Address] = err
+				continue
+			}
+			ctx, _ := context.WithTimeout(context.Background(), timeout)
+			mxs, err := net.DefaultResolver.LookupMX(ctx, addr)
+			if err != nil || len(mxs) == 0 {
+				mxs = []*net.MX{{Host: addr}}
+			}
+			var firstError error
+			for _, mx := range mxs {
+				err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{recipient.Address}, &buffer, s.domain)
+				if err == nil {
+					firstError = nil
+					break
+				}
+				if firstError == nil {
+					firstError = err
+				}
+			}
+			if firstError != nil {
+				report[recipient.Address] = firstError
+			}
+		}
 	}
 	return report, nil
 }
