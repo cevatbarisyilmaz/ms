@@ -13,13 +13,13 @@ To be successfully delivered, an email need to pass 3 spam checks:
 
 ### Sender Policy Framework (SPF)
 
-SPF checks if the remote address is actually authorized to send emails for a certain domain.
+SPF checks if your IP address is actually authorized to send emails for your domain.
 
 To pass SPF, you need to have a TXT DNS record for your domain.
 
 Checkout https://dmarcian.com/spf-syntax-table/ for detailed SPF syntax.
 
-A sample record is `v=spf1 a mx -all` which tells accept the IP addresses have either A, AAA or MX DNS record for the domain.
+A sample record is `v=spf1 a mx -all` which tells remote SMTP servers to accept the IP addresses have either A, AAA or MX DNS record for the domain.
 
 ### DomainKeys Identified Mail (DKIM)
 
@@ -27,7 +27,7 @@ DKIM is a bit trickier than SPF. It's basically a public key infrastructure for 
 You can generate the keys by third party tools like openssl or with crypto packages of Go.
 
 Checkout https://knowledge.ondmarc.redsift.com/en/articles/2141527-generating-1024-bits-dkim-public-and-private-keys-using-openssl-on-a-mac
-for openssl
+for openssl.
 
 You can use the following code to generate keys in Go:
 
@@ -75,7 +75,7 @@ Keep private.key file to use with ms later.
 Create a DNS TXT record for hostname
 `<dkim-selector>._domainkey.<your-domain.com>` with the value `v=DKIM1; p=<base64-encoded-public-key>`
 
-Replace `<dkim-selector>` with any identifier you like, replace <your-domain.com> with your domain,
+Replace `<dkim-selector>` with any identifier you like for the public key, replace `<your-domain.com>` with your domain,
 Replace `<base64-encoded-public-key>` with base64 encoded version of your public key without the whitespace, for example hostname is `default._domainkey.example.com` and value is
 `v=DKIM1; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC4O4fVFHCIcBx5TlQHypEmS1efHnhSQ3aUXOTdttHGrVQaVj8/7Mzzc1xKtjl3UO2Y6JU2h6jGBid8umbxQ14PpnfHyX4B7oWlVbm8ipUabRIr1hLRH9BGFOxHYfGjgESx0LdnyWJ6S2OnB7YMlQ/DR2TLArh8hoLCqs1YwNm3QwIDAQAB`
 
@@ -84,12 +84,12 @@ Replace `<base64-encoded-public-key>` with base64 encoded version of your public
 DMARC is a policy based on SPF and DKIM, again works via TXT DNS records. Checkout https://en.wikipedia.org/wiki/DMARC for more info.
 
 A basic TXT DNS record for DMARC looks like:
-`hostname`: `_dmarc.<your-domain.com>`, `value`: `v=DMARC1; p=reject; rua=mailto:admin@<your-domain.com>` which tells reject the spams
-and send reports to admin@<your-domain.com>
+`hostname`: `_dmarc.<your-domain.com>`, `value`: `v=DMARC1; p=reject; rua=mailto:admin@<your-domain.com>` which tells remote SMTP servers to reject the mails that fails previous spam checks and send reports to admin@<your-domain.com>
 
 ## Sending Mail via ms
 
-After completing the previous steps, now we're ready to use ms. A sample program looks like:
+After completing the previous steps, now we're ready to use ms. A sample program looks like: (Be sure you run the
+program within a host whose IP address passes the SPF check)
 
 ```go
 package ms_test
