@@ -6,11 +6,13 @@ import (
 )
 
 var (
-	ErrAuthRequired    = errors.New("Please authenticate first")
-	ErrAuthUnsupported = errors.New("Authentication not supported")
+	// ErrAuthRequired means an authentication is required to proceed
+	ErrAuthRequired = errors.New("please authenticate first")
+	// ErrAuthUnsupported means the authentication method is unsupported
+	ErrAuthUnsupported = errors.New("authentication not supported")
 )
 
-// A SMTP server backend.
+// Backend is an SMTP Server Backend
 type Backend interface {
 	// Authenticate a user. Return smtp.ErrAuthUnsupported if you don't want to
 	// support this.
@@ -38,6 +40,7 @@ type MailOptions struct {
 	UTF8 bool
 }
 
+// Session represent a SMTP session
 type Session interface {
 	// Discard currently processed message.
 	Reset()

@@ -5,6 +5,8 @@ github.com/emersion/go-sasl v0.0.0-20190817083125-240c8404624e h1:ba7YsgX5OV8FjG
 github.com/emersion/go-sasl v0.0.0-20190817083125-240c8404624e/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
 github.com/emersion/go-smtp v0.12.1 h1:1R8BDqrR2HhlGwgFYcOi+BVTvK1bMjAB65QcVpJ5sNA=
 github.com/emersion/go-smtp v0.12.1/go.mod h1:SD9V/xa4ndMw77lR3Mf7htkp8RBNYuPh9UeuBs9tpUQ=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 golang.org/x/crypto v0.0.0-20190411191339-88737f569e3a h1:Igim7XhdOpBnWPuYJ70XcNpq8q3BCACtVgNfoJxOV7g=
 golang.org/x/crypto v0.0.0-20190411191339-88737f569e3a/go.mod h1:WFFai1msRO1wXaEeE5yQxYXgSfI8pQAWXbQop6sCtWE=
 golang.org/x/sys v0.0.0-20190403152447-81d4e9dc473e/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

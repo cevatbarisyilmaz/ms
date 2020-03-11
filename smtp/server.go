@@ -15,7 +15,7 @@ import (
 
 var errTCPAndLMTP = errors.New("smtp: cannot start LMTP server listening on a TCP socket")
 
-// A function that creates SASL servers.
+// SaslServerFactory creates SASL servers.
 type SaslServerFactory func(conn *Conn) sasl.Server
 
 // Logger interface is used by Server to report unexpected internal errors.
@@ -24,7 +24,7 @@ type Logger interface {
 	Println(v ...interface{})
 }
 
-// A SMTP server.
+// Server represents a SMTP Server.
 type Server struct {
 	// TCP or Unix address to listen on.
 	Addr string

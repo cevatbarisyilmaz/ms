@@ -111,7 +111,7 @@ func (s *Service) Send(m *Mail) error {
 			mxs = []*net.MX{{Host: addr}}
 		}
 		for _, mx := range mxs {
-			err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{receipent}, &buffer)
+			err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{receipent}, &buffer, s.domain)
 			if err == nil {
 				return nil
 			}
