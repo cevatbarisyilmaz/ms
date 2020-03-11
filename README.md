@@ -5,7 +5,11 @@
 [![GitHub](https://img.shields.io/github/license/cevatbarisyilmaz/ms?style=flat-square)](https://github.com/cevatbarisyilmaz/ms/blob/master/LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cevatbarisyilmaz/ms?style=flat-square)](https://goreportcard.com/report/github.com/cevatbarisyilmaz/ms)
 
-Simple mail service to send mails to remote SMTP servers.
+Simple mail service to deliver emails to remote SMTP servers with features:
+
+* DMIC Signing
+* Message-ID Creation
+* MX Lookups
 
 ## How to Properly Send Emails for Beginners
 
@@ -147,4 +151,3 @@ func Example() {
 	log.Println("success")
 }
 ```
-
