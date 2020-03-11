@@ -149,7 +149,7 @@ func Example() {
         log.Fatal(err)
     }
     if len(report) != 0 {
-        log.Fatalln(report)
+        log.Fatal(report)
     }
     log.Println("success")
 }

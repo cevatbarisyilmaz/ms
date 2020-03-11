@@ -8,6 +8,7 @@ import (
 	"github.com/cevatbarisyilmaz/ms/smtp"
 	"github.com/emersion/go-msgauth/dkim"
 	"github.com/pkg/errors"
+	"io"
 	"math/rand"
 	"net"
 	"net/mail"
@@ -108,6 +109,7 @@ func (s *Service) Send(m *Mail) (map[string]error, error) {
 		var buffer bytes.Buffer
 		buffer.WriteString(signer.Signature())
 		buffer.Write(rawMail)
+		reader := bytes.NewReader(buffer.Bytes())
 		for _, recipient := range to {
 			addr, err := resolveAddr(recipient)
 			if err != nil {
@@ -121,7 +123,12 @@ func (s *Service) Send(m *Mail) (map[string]error, error) {
 			}
 			var firstError error
 			for _, mx := range mxs {
-				err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{recipient}, &buffer, s.domain)
+				_, err = reader.Seek(0, io.SeekStart)
+				if err != nil {
+					report[recipient] = err
+					break
+				}
+				err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{recipient}, reader, s.domain)
 				if err == nil {
 					firstError = nil
 					break
