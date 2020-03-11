@@ -144,13 +144,13 @@ func Example() {
 	}
 
 	// Send the mail via mail service
-    report, err := mailService.Send(mail)
-    if err != nil {
-        log.Fatal(err)
-    }
-    if len(report) != 0 {
-        log.Fatal(report)
-    }
-    log.Println("success")
+	report, err := mailService.Send(mail)
+	if err != nil {
+        	log.Fatal(err)
+	}
+	if len(report) != 0 {
+		log.Fatal(report)
+	}
+	log.Println("success")
 }
 ```
