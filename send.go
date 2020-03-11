@@ -50,7 +50,13 @@ func New(domain string, dkimSelector string, dkimSigner crypto.Signer) *Service 
 }
 
 // Send sends the mail to a remote SMTP server
-func (s *Service) Send(m *Mail) error {
+// Returns (nil, error) if there is something wrong with the contents of the email
+// Returns (report, nil) if contents of the mail were OK
+// report is a recipient to error map which shows individual errors for each delivery
+// A nil entry in the map means delivery for the corresponding recipient was successful
+// Recipients are email addresses of To, Cc And Bcc targets without display names such as
+// someuser@somedomain.com
+func (s *Service) Send(m *Mail) (map[string]error, error) {
 	s.nextMessageIDMu.Lock()
 	msgID := s.nextMessageID
 	s.nextMessageID += uint16(s.rand.Intn(16))
@@ -58,7 +64,7 @@ func (s *Service) Send(m *Mail) error {
 	m.Headers["Message-ID"] = []byte("<" + strconv.Itoa(int(time.Now().Unix())) + "." + strconv.Itoa(rand.Int()) + "." + strconv.Itoa(int(msgID)) + "@movieofthenight.com>")
 	from, err := mail.ParseAddress(string(m.Headers["From"]))
 	if err != nil {
-		return errors.Wrap(err, "parsing form header failed")
+		return nil, errors.Wrap(err, "parsing form header failed")
 	}
 	var to []string
 	addrs, err := mail.ParseAddressList(string(m.Headers["To"]))
@@ -81,46 +87,50 @@ func (s *Service) Send(m *Mail) error {
 	}
 	delete(m.Headers, "Bcc")
 	if len(to) == 0 {
-		return errors.New("either To, Cc, or Bcc must be supplied")
+		return nil, errors.New("either To, Cc, or Bcc must be supplied")
 	}
 	signer, err := dkim.NewSigner(s.dkimSignOptions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	rawMail := m.encode()
 	_, err = signer.Write(rawMail)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = signer.Close()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString(signer.Signature())
 	buffer.Write(rawMail)
-	var firstError error
-	for _, receipent := range to {
-		addr, err := resolveAddr(receipent)
+	report := map[string]error{}
+	for _, recipient := range to {
+		addr, err := resolveAddr(recipient)
 		if err != nil {
-			return err
+			report[recipient] = err
+			continue
 		}
 		ctx, _ := context.WithTimeout(context.Background(), timeout)
 		mxs, err := net.DefaultResolver.LookupMX(ctx, addr)
 		if err != nil || len(mxs) == 0 {
 			mxs = []*net.MX{{Host: addr}}
 		}
+		var firstError error
 		for _, mx := range mxs {
-			err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{receipent}, &buffer, s.domain)
+			err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{recipient}, &buffer, s.domain)
 			if err == nil {
-				return nil
+				firstError = nil
+				break
 			}
 			if firstError == nil {
 				firstError = err
 			}
 		}
+		report[recipient] = firstError
 	}
-	return firstError
+	return report, nil
 }
 
 func resolveAddr(addr string) (string, error) {
