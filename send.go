@@ -5,9 +5,9 @@ import (
 	"bytes"
 	"context"
 	"crypto"
-	"errors"
 	"github.com/cevatbarisyilmaz/ms/smtp"
 	"github.com/emersion/go-msgauth/dkim"
+	"github.com/pkg/errors"
 	"math/rand"
 	"net"
 	"net/mail"
@@ -55,10 +55,33 @@ func (s *Service) Send(m *Mail) error {
 	msgID := s.nextMessageID
 	s.nextMessageID += uint16(s.rand.Intn(16))
 	s.nextMessageIDMu.Unlock()
-	m.Headers["message-id"] = []byte("<" + strconv.Itoa(int(time.Now().Unix())) + "." + strconv.Itoa(rand.Int()) + "." + strconv.Itoa(int(msgID)) + "@movieofthenight.com>")
-	from, err := mail.ParseAddress(string(m.Headers["from"]))
+	m.Headers["Message-ID"] = []byte("<" + strconv.Itoa(int(time.Now().Unix())) + "." + strconv.Itoa(rand.Int()) + "." + strconv.Itoa(int(msgID)) + "@movieofthenight.com>")
+	from, err := mail.ParseAddress(string(m.Headers["From"]))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "parsing form header failed")
+	}
+	var to []string
+	addrs, err := mail.ParseAddressList(string(m.Headers["To"]))
+	if err == nil {
+		for _, addr := range addrs {
+			to = append(to, addr.Address)
+		}
+	}
+	addrs, err = mail.ParseAddressList(string(m.Headers["Cc"]))
+	if err == nil {
+		for _, addr := range addrs {
+			to = append(to, addr.Address)
+		}
+	}
+	addrs, err = mail.ParseAddressList(string(m.Headers["Bcc"]))
+	if err == nil {
+		for _, addr := range addrs {
+			to = append(to, addr.Address)
+		}
+	}
+	delete(m.Headers, "Bcc")
+	if len(to) == 0 {
+		return errors.New("either To, Cc, or Bcc must be supplied")
 	}
 	signer, err := dkim.NewSigner(s.dkimSignOptions)
 	if err != nil {
@@ -76,13 +99,9 @@ func (s *Service) Send(m *Mail) error {
 	var buffer bytes.Buffer
 	buffer.WriteString(signer.Signature())
 	buffer.Write(rawMail)
-	addrs, err := mail.ParseAddressList(string(m.Headers["to"]))
-	if err != nil {
-		return err
-	}
 	var firstError error
-	for _, to := range addrs {
-		addr, err := resolveAddr(to.Address)
+	for _, receipent := range to {
+		addr, err := resolveAddr(receipent)
 		if err != nil {
 			return err
 		}
@@ -92,7 +111,7 @@ func (s *Service) Send(m *Mail) error {
 			mxs = []*net.MX{{Host: addr}}
 		}
 		for _, mx := range mxs {
-			err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{to.Address}, &buffer)
+			err = smtp.SendMail(mx.Host+":smtp", nil, from.Address, []string{receipent}, &buffer)
 			if err == nil {
 				return nil
 			}
