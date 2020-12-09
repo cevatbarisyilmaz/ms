@@ -62,7 +62,7 @@ func (s *Service) Send(m *Mail) (map[string]error, error) {
 	msgID := s.nextMessageID
 	s.nextMessageID += uint16(s.rand.Intn(16))
 	s.nextMessageIDMu.Unlock()
-	m.Headers["Message-ID"] = []byte("<" + strconv.Itoa(int(time.Now().Unix())) + "." + strconv.Itoa(rand.Int()) + "." + strconv.Itoa(int(msgID)) + "@movieofthenight.com>")
+	m.Headers["Message-ID"] = []byte("<" + strconv.Itoa(int(time.Now().Unix())) + "." + strconv.Itoa(rand.Int()) + "." + strconv.Itoa(int(msgID)) + "@" + s.domain + ">")
 	from, err := mail.ParseAddress(string(m.Headers["From"]))
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing from header failed")
